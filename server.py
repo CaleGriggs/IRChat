@@ -8,6 +8,7 @@ import ssl
 import threading
 from datetime import datetime
 import time
+import serverCommands
 
 
 HOST = "0.0.0.0"    # Local for now | listen on all network interfaces
@@ -16,10 +17,17 @@ PORT = 6667         # typical IRC port | might switch to TLS 6697
 clients = {}        # socket -> nickname
 
 class user():
+    registered = False
+    connection = socket
+    address = ""
     nickname = ""
     prefix = ""
+    password = ""
+    server = ""
+    def __init__(self, conn, addr):
+        self.connection = conn
+        self.address = addr
   
-
 class Message():
     tags = {}
     source = ""
@@ -50,7 +58,7 @@ def msgSplit(msg,parsedMessage):
 
     parsedMessage.tags = tags
     parsedMessage.source = source
-    parsedMessage.command = command
+    parsedMessage.command = command.upper()
     parsedMessage.params = params
     parsedMessage.trailing = trailing
 
@@ -64,62 +72,41 @@ def broadcast(message, exclude=None):
                 client.close()
                 del clients[client]
 
-def connectionReg(conn, msg, addr):
+def connectionReg(userClient, msg):
+    conn = userClient.connection, addr = userClient.address
     now = datetime.now().strftime("%m/%d %I:%M:%S %p")
     currentName = ""
     nickname = None
-    match msg.split(" ",1)[0]:
-        case "/NICK":
-            if nickname is None:
-                currentName = addr
-                nickname = msg.split(" ", 1)[1]
-                clients[conn] = nickname
-                broadcast(f"*** {nickname} joined the chat ***\n", exclude=conn)
-            else:
-                nickname = msg.split(" ", 1)[1]
-                clients[conn] = nickname
-                conn.sendall(f"Nickname set to {nickname}\n".encode())
-                broadcast(f"[{currentName}] changed their name to {nickname}.\n", exclude=conn)
-            print(f"{now}:{currentName} set nickname to {nickname}")
-            currentName = nickname
-
-def messageCase(conn, msg, addr):
-
-    parsedMessage = Message
-    msgSplit(msg, parsedMessage)
-
-"""
-    case "/QUIT":
-        conn.sendall("Goodbye!\n".encode())
-        if not nickname:
-            print(f"{addr} Client has disconnected.")
-        else:
-            print(f"{addr} \"{nickname}\" has disconnected.")
-"""
-"""
-    case "/PING":
-        time.sleep(1)
-        #print("ping -> pong")
-        msg = msg.split(" ",1)[1]
-        conn.send(f"/PONG {msg}".encode())
-"""
-"""
-    case _:
-        if nickname:
-            broadcast(f"[{nickname}]: {msg}\n", exclude=conn)
-        else:
-            conn.sendall("Set your nickname first with /NICK <name>\n".encode())
-"""
+    while not userClient.registered:
+        match msg.split(" ",1)[0]:
+            case "NICK":
+                if nickname is None:
+                    currentName = addr
+                    nickname = msg.split(" ", 1)[1]
+                    clients[conn] = nickname
+                    broadcast(f"*** {nickname} joined the chat ***\n", exclude=conn)
+                else:
+                    nickname = msg.split(" ", 1)[1]
+                    clients[conn] = nickname
+                    conn.sendall(f"Nickname set to {nickname}\n".encode())
+                    broadcast(f"[{currentName}] changed their name to {nickname}.\n", exclude=conn)
+                print(f"{now}:{currentName} set nickname to {nickname}")
+                currentName = nickname
+            case _:
+                pass
 
 def handle_client(conn, addr):
-
+    userClient = user(conn, addr)
     while True:
         try:
-            data = conn.recv(1024)
+            data = userClient.connection.recv(1024)
             if not data:
                 break
             msg = data.decode().strip()
-            messageCase(conn, msg, addr)
+            if userClient.registered:
+                receiveMessage(userClient, msg)
+            else:
+                connectionReg(userClient,msg)
         except ConnectionResetError:
             break
 
@@ -145,3 +132,103 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+def receiveMessage(userClient, msg):
+    parsedMessage = Message
+    msgSplit(msg, parsedMessage)
+    # conn.sendall("Goodbye!\n".encode())
+    match parsedMessage.commands:
+        case "CAP":
+            print()
+        case "AUTHENTICATE":
+            print()
+        case "PASS":
+            """
+            Command: PASS
+            Parameters: <password> <version> <flags> [<options>]
+            """
+            print()
+        case "NICK":
+            userClient.nickname = serverCommands.nick(parsedMessage.trailing)
+        case "USER":
+            print()
+        case "PING":
+            """
+            Command: PING
+            Parameters: <token>
+            """
+            print()
+        case "PONG":
+            """
+            Command: PONG
+            Parameters: [<server>] <token>
+            """
+            print()
+        case "OPER":
+            print()
+        case "QUIT":
+            print()
+        case "ERROR":
+            print()
+        case "JOIN":
+            print()
+        case "PART":
+            print()
+        case "TOPIC":
+            print()
+        case "NAMES":
+            print()
+        case "LIST":
+            print()
+        case "INVITE":
+            print()
+        case "KICK":
+            print()
+        case "MOTD":
+            print()
+        case "VERION":
+            print()
+        case "ADMIN":
+            print()
+        case "CONNECTION":
+            print()
+        case "LUSERS":
+            print()
+        case "TIME":
+            print()
+        case "STATS":
+            print()
+        case "HELP":
+            print()
+        case "INFO":
+            print()
+        case "MODE":
+            print()
+        case "PRIVMSG":
+            print()
+        case "NOTICE":
+            print()
+        case "WHO":
+            print()
+        case "WHOIS":
+            print()
+        case "WHOWAS":
+            print()
+        case "KILL":
+            print()
+        case "REHASH":
+            print()
+        case "RESTART":
+            print()
+        case "SQUIT":
+            print()
+        case "AWAY":
+            print()
+        case "LINKS":
+            print()
+        case "USERHOST":
+            print()
+        case "WALLOPS":
+            print()
+        case _:
+            print("error")

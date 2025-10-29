@@ -1,8 +1,9 @@
 README.md
 LICENSE
+.gitignore
 
-# VSCode
 .vscode/
 
 notes.txt
 temp.py
+__pycache__
