@@ -6,4 +6,10 @@ LICENSE
 
 notes.txt
 temp.py
+test.txt
 __pycache__
+
+
+
+*.crt
+*.key
