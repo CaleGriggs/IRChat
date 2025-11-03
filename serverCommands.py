@@ -74,7 +74,7 @@ class Message:
             params, trailing = msg.split(":", 1)
             params = params.rstrip().split(" ")
         except ValueError:
-            params,trailing = "",""
+            params,trailing = msg,""
 
         self.source = source
         self.command = command.upper()
@@ -114,7 +114,12 @@ class Message:
         )
 
 
-def receiveMessage(client, msg):
+def receiveMessage(client, msg, args=[]):
+    """
+    client = user()  
+    msg = Message()  
+    agrs = [Either nothing or anything]
+    """
     # conn.sendall("Goodbye!\n".encode())
     match msg.commands:
         case "CAP":
@@ -124,13 +129,21 @@ def receiveMessage(client, msg):
         case "PASS":
             """
             Command: PASS
-            Parameters: <password> <version> <flags> [<options>]
+            Parameters: <password>
+            args = [serverPassword]
+            could also open a file here to check password against that
             """
-
+             # ERR_NEEDMOREPARAMS (461) - CONNOT BE PARSED, NOT ENOUGH PARAMS
+            if msg.params == "":
+                return ["ERR_NEEDMOREPARAMS", "461"]
             # ERR_PASSWDMISMATCH (464) - PASSWORD DOES NOT MATCH
-            # ERR_NEEDMOREPARAMS (461) - CONNOT BE PARSED, NOT ENOUGH PARAMS
+            if msg.params != args[0]:
+                return ["ERR_PASSWDMISMATCH", "464"]
             # ERR_ALREADYREGISTERED (462) - IF CLIENT TRIES TO CHANGE REGISTRATION INFO AFTER REGISTRATION
-
+            if client.registered:
+                return ["ERR_ALREADYREGISTERED", "462"]
+            if msg.params == args[0] and not client.registered:
+                return "Let em in"
             client.password = msg.trailing
             print()
         case "NICK":

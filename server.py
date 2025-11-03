@@ -14,6 +14,7 @@ PORT = 6697  # typical IRC port | might switch to TLS 6697
 
 clients = {}  # socket -> nickname
 channels = [] # list of channels
+serverPass = "test"
 
 
 def broadcast(message, exclude=None):
@@ -27,31 +28,46 @@ def broadcast(message, exclude=None):
                 del clients[client]
 
 
-def connectionReg(userClient, msg):
-    now = datetime.now().strftime("%m/%d %I:%M:%S %p")
-    passwordProvided = False
+def connectionReg(userClient, msg, passwordProvided= False):
     while not userClient.registered:
+        parsedMessage = serverCommands.Message(msg)
+        now = datetime.now().strftime("%m/%d %I:%M:%S %p")
         """
         PASSword comes first, but not required
         needs new NICKname and USERname
         """
-        if msg.command == "PASS":
-            # set PASSword
-            pass
-        elif msg.command == "NICK":
-            # set NICKname
-            pass
-        elif msg.command == "USER":
-            # set USER
-            pass
+        if parsedMessage.command == "PASS":
+            if parsedMessage.params == serverPass:
+                passwordProvided = True
+                print(f"Password accepted from {userClient.address}")
+        elif parsedMessage.command == "NICK":
+            if parsedMessage.params != "":
+                userClient.nickname = parsedMessage.params
+            else:
+                #TODO something wrong with input
+                pass
+        elif parsedMessage.command == "USER":
+            if parsedMessage.params != "":
+                userClient.username = parsedMessage.params
+            else:
+                #TODO something wrong with input
+                pass
         if userClient.nickname != "" and userClient.username != "":
             if not passwordProvided:
-                userClient.nickname = "guest"
+                # userClient.nickname = "guest"
                 #TODO reply that user has limited commands and their NICKname is set to guest
+                pass
+                
             userClient.registered = True
+            print(f"{userClient.address} set their nickname to {userClient.nickname} and username to {userClient.username}")
+            break
         else:
             # TODO NICKname or USERname not accepted
             pass
+        data = userClient.connection.recv(1024)
+        msg = data.decode()
+
+
             
 
 
@@ -62,16 +78,18 @@ def handle_client(conn, addr):
     print(type(conn))
     response = ""
     userClient = serverCommands.user(conn, addr)
+    userClient.username = "guest"f
     while True:
         try:
             data = userClient.connection.recv(1024)
             if not data:
                 break
-            parsedMessage = serverCommands.Message(data.decode().strip())
+            
             if userClient.registered:
+                parsedMessage = serverCommands.Message(data.decode())
                 response = serverCommands.receiveMessage(userClient, parsedMessage)
             else:
-                connectionReg(userClient, parsedMessage)
+                connectionReg(userClient,data)
                 # start PING/PONG loop
         except ConnectionResetError:
             break
