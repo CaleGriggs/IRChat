@@ -99,7 +99,7 @@ def draw_connect_window(stdscr,error_msg=""):
                         print("The file 'test.txt' was not found.")
                     except Exception as e:
                         print(f"An error occurred: {e}")
-                        SERVER = "192.168.1.109"
+                        
 #################################### </For Testing> ########################################################                        
 
                     while attempts > 0:
